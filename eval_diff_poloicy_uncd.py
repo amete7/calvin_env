@@ -10,6 +10,10 @@ from model import ConditionalUnet1D
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 import traceback
 
+seed = 1234
+np.random.seed(seed)
+torch.manual_seed(seed)
+
 def init_min_max(stats_file_path):
     data = np.load(stats_file_path,allow_pickle=True)
     min_action = data['min_action']
@@ -26,15 +30,21 @@ def denormalize(naction,min_action,max_action):
     return original_action
 
 def main(cfg):
-    max_steps = 200
+    max_steps = 1000
     obs_horizon = 2
     pred_horizon = 16
     action_horizon = 8
     action_dim = 7
     obs_dim = 39
 
-    min_action,max_action = init_min_max('/home/atharva/roblr/calvin/stats_actions.npz')
-    ckpt_path = "/home/atharva/roblr/calvin/ema_noise_pred_net_nor_action.pth"
+    min_action,max_action = init_min_max('/satassdscratch/scml-shared/calvin_data/task_D_D/stats_actions.npz')
+    ckpt_path = "/satassdscratch/scml-shared/calvin_data/task_D_D/ema_noise_pred_net_nor_action.pth"
+    output_video_path = 'output_video.mp4'
+    frame_size = (800,800)
+    fps = 15
+    # Initialize the VideoWriter
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use 'mp4v' or 'xvid' for MP4, 'MJPG' for AVI
+    video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
 
     device = torch.device('cuda')
 
@@ -75,7 +85,7 @@ def main(cfg):
             # nobs = normalize_data(obs_seq,min_obs,max_obs)
             # device transfer
             nobs = torch.from_numpy(nobs).to(device, dtype=torch.float32)
-            print(nobs,'nobs_outside')
+            # print(nobs,'nobs_outside')
             with torch.no_grad():
                 # reshape observation to (B,obs_horizon*obs_dim)
                 obs_cond = nobs.unsqueeze(0).flatten(start_dim=1)
@@ -115,10 +125,12 @@ def main(cfg):
                 action_to_take = action[timestep].copy()
                 action_to_take[-1] = int((int(action[timestep][-1] >= 0) * 2) - 1)
                 action_to_take_abs = ((action_to_take[0],action_to_take[1],action_to_take[2]),(action_to_take[3],action_to_take[4],action_to_take[5]),(action_to_take[-1],))
-                print(action_to_take_abs)
+                # print(action_to_take_abs)
                 observation, reward, done, info = env.step(action_to_take_abs)
+                rgb = env.render(mode="rgb_array")[:,:,::-1]
+                video_writer.write(rgb)
                 obs = np.concatenate((observation['robot_obs'], observation['scene_obs']),axis=-1)
-                print(obs)
+                # print(obs)
                 obs_deque.append(obs)
                 step_idx += 1
                 pbar.update(1)
@@ -126,6 +138,9 @@ def main(cfg):
                     done = True
                 if done:
                     break
+    # Release the VideoWriter
+    video_writer.release()
+    print(f"Video saved to {output_video_path}")
 
 if __name__== "__main__":
     
@@ -135,7 +150,7 @@ if __name__== "__main__":
         print("config path:")
         cfg = compose(config_name="config_data_collection.yaml",overrides=["cameras=static_and_gripper"])
         cfg.env["use_egl"] = False
-        cfg.env["show_gui"] = True
+        cfg.env["show_gui"] = False
         cfg.env["use_vr"] = False
         cfg.env["use_scene_info"] = True
         print(cfg.env)
