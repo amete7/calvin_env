@@ -9,8 +9,9 @@ import torch
 from model import ConditionalUnet1D
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 import traceback
+from calvin_env.envs.tasks import Tasks
 
-seed = 39681
+seed = 1234
 np.random.seed(seed)
 torch.manual_seed(seed)
 
@@ -30,16 +31,18 @@ def denormalize(naction,min_action,max_action):
     return original_action
 
 def main(cfg):
+    tasks_dict = cfg.tasks['tasks']
+    tasks_instance = Tasks(tasks_dict)
     max_steps = 1000
     obs_horizon = 2
-    pred_horizon = 64
-    action_horizon = 64
+    pred_horizon = 16
+    action_horizon = 8
     action_dim = 7
     obs_dim = 39
-
+    return True
     save_video = False
     min_action,max_action = init_min_max('/satassdscratch/scml-shared/calvin_data/task_D_D/stats_actions.npz')
-    ckpt_path = "/satassdscratch/scml-shared/calvin_data/task_D_D/uncnd_H64_naction_epoch49.pth"
+    ckpt_path = "/satassdscratch/scml-shared/calvin_data/task_D_D/ema_noise_pred_net_nor_action.pth"
     
     if save_video:
         output_video_path = 'output_video.mp4'
@@ -158,7 +161,7 @@ if __name__== "__main__":
         cfg.env["show_gui"] = False
         cfg.env["use_vr"] = False
         cfg.env["use_scene_info"] = True
-        print(cfg.env)
+        # print(cfg.env)
 
     try:
         # Your code that may raise an exception here

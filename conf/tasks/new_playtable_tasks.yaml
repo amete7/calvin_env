@@ -17,10 +17,10 @@ tasks:
   push_pink_block_left: [ push_object, 'block_pink', -0.1, 0]
 
   # open/close
-  move_slider_left: [move_door_rel, 'base__slide', 0.15]  # 0 - 0.56
-  move_slider_right: [move_door_rel, 'base__slide', -0.15]
-  open_drawer: [move_door_rel, 'base__drawer', 0.12]  # 0 - 0.24
-  close_drawer: [move_door_rel, 'base__drawer', -0.12]
+  move_slider_left: [move_door_rel, 'base__slide', 0.01]  # 0 - 0.56
+  move_slider_right: [move_door_rel, 'base__slide', -0.01]
+  open_drawer: [move_door_rel, 'base__drawer', 0.01]  # 0 - 0.24
+  close_drawer: [move_door_rel, 'base__drawer', -0.01]
 
   # lifting
   lift_red_block_table: [lift_object, 'block_red', 0.05, 'table', 'base_link']

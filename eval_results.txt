@@ -1,0 +1,338 @@
+Overall Task Counts:
+stack_block: 20
+move_slider_left: 211
+unstack_block: 98
+turn_on_lightbulb: 175
+turn_on_led: 130
+open_drawer: 185
+move_slider_right: 46
+turn_off_led: 45
+turn_off_lightbulb: 68
+rotate_blue_block_right: 4
+push_into_drawer: 27
+push_red_block_right: 6
+close_drawer: 48
+push_red_block_left: 3
+lift_red_block_table: 14
+rotate_blue_block_left: 5
+lift_blue_block_table: 5
+rotate_red_block_left: 2
+place_in_drawer: 6
+rotate_red_block_right: 1
+lift_red_block_drawer: 1
+place_in_slider: 7
+push_blue_block_right: 1
+lift_pink_block_slider: 2
+lift_pink_block_table: 1
+rotate_pink_block_right: 1
+lift_red_block_slider: 1
+
+move_slider_left open_drawer turn_on_lightbulb turn_on_led unstack_block
+turn_off_lightbulb close_drawer move_slider_right turn_off_led 
+
+File-Specific Task Counts:
+eval_P64_H64_29.npz:
+  stack_block: 6
+  move_slider_left: 13
+  unstack_block: 7
+  turn_on_lightbulb: 11
+  turn_on_led: 7
+  open_drawer: 8
+  move_slider_right: 5
+  turn_off_led: 2
+  turn_off_lightbulb: 6
+  rotate_blue_block_right: 1
+  push_into_drawer: 3
+  push_red_block_right: 3
+  close_drawer: 1
+  push_red_block_left: 1
+Total task count: 14
+
+eval_P64_H64_79.npz:
+  stack_block: 10
+  move_slider_left: 11
+  turn_on_lightbulb: 13
+  rotate_blue_block_right: 1
+  turn_on_led: 8
+  lift_red_block_table: 4
+  rotate_blue_block_left: 2
+  unstack_block: 6
+  turn_off_lightbulb: 5
+  open_drawer: 6
+  push_red_block_left: 1
+  turn_off_led: 4
+  move_slider_right: 1
+Total task count: 13
+
+eval_P32_H64_49.npz:
+  move_slider_left: 11
+  open_drawer: 9
+  turn_on_lightbulb: 12
+  turn_on_led: 9
+  close_drawer: 2
+  turn_off_lightbulb: 7
+  unstack_block: 6
+  move_slider_right: 2
+  lift_red_block_table: 1
+  turn_off_led: 1
+  push_into_drawer: 2
+  stack_block: 1
+Total task count: 12
+
+eval_P32_H32_39.npz:
+  move_slider_left: 14
+  open_drawer: 10
+  push_into_drawer: 2
+  unstack_block: 4
+  turn_on_lightbulb: 8
+  turn_off_lightbulb: 3
+  turn_on_led: 5
+  lift_red_block_table: 1
+  turn_off_led: 3
+  move_slider_right: 6
+  close_drawer: 3
+  lift_blue_block_table: 1
+  rotate_red_block_left: 1
+  place_in_drawer: 1
+  rotate_blue_block_left: 1
+  rotate_red_block_right: 1
+Total task count: 16
+
+eval_P16_H32_29.npz:
+  move_slider_left: 9
+  open_drawer: 10
+  turn_on_lightbulb: 5
+  unstack_block: 7
+  push_into_drawer: 2
+  close_drawer: 2
+  turn_on_led: 7
+  turn_off_led: 3
+  stack_block: 1
+  move_slider_right: 2
+Total task count: 10
+
+eval_P32_H32_69.npz:
+  open_drawer: 13
+  move_slider_left: 10
+  close_drawer: 5
+  turn_on_lightbulb: 8
+  turn_off_lightbulb: 2
+  place_in_drawer: 2
+  lift_red_block_drawer: 1
+  unstack_block: 7
+  lift_red_block_table: 1
+  push_into_drawer: 1
+  turn_on_led: 4
+  turn_off_led: 2
+  push_red_block_left: 1
+Total task count: 13
+
+eval_P8_H32_59.npz:
+  open_drawer: 13
+  turn_on_lightbulb: 3
+  move_slider_left: 4
+  place_in_slider: 2
+  turn_on_led: 2
+  turn_off_led: 2
+  close_drawer: 3
+  unstack_block: 1
+Total task count: 8
+
+eval_P16_H32_69.npz:
+  open_drawer: 10
+  turn_on_lightbulb: 4
+  unstack_block: 4
+  move_slider_left: 5
+  close_drawer: 3
+  push_into_drawer: 1
+Total task count: 6
+
+eval_P16_H16_99.npz:
+  turn_on_lightbulb: 11
+  move_slider_left: 11
+  turn_on_led: 11
+  unstack_block: 8
+  turn_off_lightbulb: 5
+  open_drawer: 3
+  close_drawer: 1
+  turn_off_led: 3
+  move_slider_right: 4
+Total task count: 9
+
+eval_P16_H64_49.npz:
+  move_slider_left: 10
+  open_drawer: 5
+  push_blue_block_right: 1
+  turn_on_lightbulb: 13
+  turn_on_led: 8
+  turn_off_lightbulb: 6
+  turn_off_led: 3
+  rotate_blue_block_right: 2
+  push_into_drawer: 4
+  close_drawer: 1
+  unstack_block: 2
+  move_slider_right: 2
+  lift_red_block_table: 2
+  lift_blue_block_table: 1
+Total task count: 14
+
+eval_P16_H16_39.npz:
+  turn_on_led: 6
+  open_drawer: 15
+  close_drawer: 6
+  move_slider_left: 12
+  move_slider_right: 4
+  push_into_drawer: 1
+  turn_on_lightbulb: 7
+  unstack_block: 2
+  turn_off_lightbulb: 3
+  turn_off_led: 1
+Total task count: 10
+
+eval_P32_H32_99.npz:
+  turn_on_lightbulb: 4
+  turn_on_led: 4
+  move_slider_right: 2
+  turn_off_lightbulb: 1
+  turn_off_led: 2
+  open_drawer: 11
+  move_slider_left: 7
+  unstack_block: 4
+  close_drawer: 5
+  lift_red_block_table: 1
+  push_into_drawer: 1
+Total task count: 11
+
+eval_P8_H64_49.npz:
+  move_slider_left: 10
+  turn_on_lightbulb: 8
+  turn_on_led: 8
+  turn_off_led: 2
+  open_drawer: 6
+  close_drawer: 1
+  turn_off_lightbulb: 2
+  lift_pink_block_slider: 1
+Total task count: 8
+
+eval_P16_H32_39.npz:
+  move_slider_left: 8
+  turn_on_lightbulb: 9
+  turn_on_led: 7
+  turn_off_lightbulb: 3
+  open_drawer: 10
+  close_drawer: 4
+  push_into_drawer: 1
+  lift_pink_block_slider: 1
+  move_slider_right: 1
+  unstack_block: 1
+  turn_off_led: 2
+  place_in_drawer: 1
+Total task count: 12
+
+eval_P32_H32_59.npz:
+  open_drawer: 12
+  unstack_block: 7
+  move_slider_left: 11
+  turn_on_lightbulb: 5
+  place_in_drawer: 1
+  close_drawer: 3
+  turn_on_led: 7
+  turn_off_led: 6
+  lift_red_block_table: 1
+  turn_off_lightbulb: 1
+  move_slider_right: 1
+  push_into_drawer: 1
+Total task count: 12
+
+eval_P32_H64_29.npz:
+  move_slider_left: 11
+  turn_on_lightbulb: 12
+  turn_on_led: 7
+  unstack_block: 6
+  turn_off_lightbulb: 5
+  open_drawer: 8
+  push_into_drawer: 2
+  close_drawer: 4
+  rotate_blue_block_left: 2
+  move_slider_right: 3
+  lift_pink_block_table: 1
+  place_in_slider: 1
+  turn_off_led: 1
+  rotate_red_block_left: 1
+  rotate_pink_block_right: 1
+  push_red_block_right: 1
+Total task count: 16
+
+eval_P16_H32_59.npz:
+  open_drawer: 10
+  move_slider_left: 10
+  close_drawer: 2
+  unstack_block: 5
+  place_in_slider: 2
+  turn_on_lightbulb: 6
+  move_slider_right: 2
+  turn_off_lightbulb: 1
+  push_into_drawer: 1
+  turn_on_led: 1
+Total task count: 10
+
+eval_P16_H32_99.npz:
+  open_drawer: 9
+  move_slider_left: 5
+  push_into_drawer: 2
+  unstack_block: 2
+  turn_on_lightbulb: 1
+  turn_on_led: 1
+  turn_off_led: 1
+Total task count: 7
+
+eval_P64_H64_49.npz:
+  move_slider_left: 15
+  turn_on_lightbulb: 11
+  turn_on_led: 8
+  lift_red_block_table: 1
+  turn_off_led: 2
+  open_drawer: 8
+  place_in_drawer: 1
+  unstack_block: 8
+  lift_blue_block_table: 2
+  push_into_drawer: 1
+  turn_off_lightbulb: 3
+  move_slider_right: 3
+  stack_block: 1
+  push_red_block_right: 2
+  close_drawer: 1
+Total task count: 15
+
+eval_P16_H16_29.npz:
+Total task count: 0
+
+eval_P16_H16_69.npz:
+  turn_on_lightbulb: 9
+  move_slider_left: 14
+  turn_on_led: 11
+  move_slider_right: 6
+  turn_off_led: 4
+  unstack_block: 5
+  turn_off_lightbulb: 5
+  open_drawer: 2
+Total task count: 8
+
+eval_P32_H64_79.npz:
+  move_slider_left: 10
+  turn_on_lightbulb: 15
+  turn_on_led: 9
+  unstack_block: 6
+  turn_off_lightbulb: 10
+  open_drawer: 7
+  close_drawer: 1
+  move_slider_right: 2
+  lift_red_block_table: 2
+  lift_blue_block_table: 1
+  stack_block: 1
+  turn_off_led: 1
+  push_into_drawer: 2
+  place_in_slider: 2
+  lift_red_block_slider: 1
+Total task count: 15
+

@@ -249,7 +249,7 @@ class Tasks:
         """
         start_joint_state = start_info["scene_info"]["doors"][joint_name]["current_state"]
         end_joint_state = end_info["scene_info"]["doors"][joint_name]["current_state"]
-
+        # print(end_joint_state - start_joint_state)
         return (
             0 < threshold < end_joint_state - start_joint_state or 0 > threshold > end_joint_state - start_joint_state
         )
