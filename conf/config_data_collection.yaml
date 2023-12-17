@@ -18,3 +18,25 @@ defaults:
   - recorder: recorder
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
+
+model:
+     act_dim: 7
+     act_emb: 7
+     obs_emb: 512
+     input_emb: 2048
+     encoder_layer_num: 2
+     encoder_dim: None
+     num_head: 8
+     codebook_dim: 32
+     codebook_entry: 1024
+     skill_block_size: 32
+     image_encoder: clip
+     freeze_image_encoder: 1
+     using_emb: True
+     vq_type: fsq
+     vq_decay: 0.8
+     commitment_loss_weight: 1.
+     fsq_level: [8, 5, 5, 5]
+     decoder_type: rnn
+     gru_hidden_dim: 2048
+     obs_red_emb: 64
