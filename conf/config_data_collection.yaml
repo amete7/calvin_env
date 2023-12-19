@@ -19,24 +19,44 @@ defaults:
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
 
+paths:
+    stats_file_path: /satassdscratch/scml-shared/calvin_data/task_D_D/training/statistics.yaml
+    model_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/ckpt_conv_1000.bin
+    prior_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/ckpt_prior_1000.bin
+    processed_data_path: /satassdscratch/scml-shared/calvin_data/task_D_D/clip_data_lang.npz
+
+prior:
+    vocab_size: 1004
+    block_size: 16 # max skill sequence length
+    output_dim: 1001
+    attach_pos: [0,1]
+    eos_token: 1000
+    pad_token: [1001,1002]
+
 model:
-     act_dim: 7
-     act_emb: 7
-     obs_emb: 512
-     input_emb: 2048
-     encoder_layer_num: 2
-     encoder_dim: None
-     num_head: 8
-     codebook_dim: 32
-     codebook_entry: 1024
-     skill_block_size: 32
-     image_encoder: clip
-     freeze_image_encoder: 1
-     using_emb: True
-     vq_type: fsq
-     vq_decay: 0.8
-     commitment_loss_weight: 1.
-     fsq_level: [8, 5, 5, 5]
-     decoder_type: rnn
-     gru_hidden_dim: 2048
-     obs_red_emb: 64
+    image_encoder_dim: 512
+    gripper_state_dim: 7
+    obs_entries: [1,1]
+    act_dim: 7
+    encoder_dim: 512
+    skill_block_size: 64
+    encoder_type: 'transformer'
+    encoder_heads: 8
+    encoder_layers: 2
+    resid_pdrop: 0.1
+    attn_pdrop: 0.1
+    use_causal_attention: True
+    position_embedding_type: 'rotary'
+    vq_type: 'fsq'
+    codebook_dim: 64
+    codebook_entry: 512
+    vq_decay: 0.99
+    commitment_loss_weight: 0.25
+    fsq_level: [8,5,5,5]
+    kernel_sizes: [8,4]
+    strides: [4,1]
+    dilations: [1,2]
+    decoder_type: 'mingpt'
+    decoder_dim: 512
+    gru_hidden_dim: 512
+     

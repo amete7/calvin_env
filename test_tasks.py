@@ -6,7 +6,7 @@ import cv2
 import collections
 from tqdm import tqdm
 import torch
-from model import ConditionalUnet1D
+from diffusion_dynamics.diff_skill.calvin_env.diff_pol_model import ConditionalUnet1D
 from diffusers.schedulers.scheduling_ddpm import DDPMScheduler
 import traceback
 from calvin_env.envs.tasks import Tasks
