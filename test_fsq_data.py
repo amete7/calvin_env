@@ -11,7 +11,7 @@ import sys
 sys.path.append('/home/amete7/diffusion_dynamics/diff_skill/code')
 from model_conv import SkillAutoEncoder
 from gpt_prior import GPT, GPTConfig
-from dataset.dataset_calvin import CustomDataset_Shared
+from dataset.dataset_calvin import CustomDataset_Cont
 
 model_name = "openai/clip-vit-base-patch32"
 processor = CLIPProcessor.from_pretrained(model_name)
@@ -56,14 +56,17 @@ torch.manual_seed(seed)
 def main(cfg):
     max_steps = 1000
     save_video = True
-    idx = 10
+    # idx = 1132
+    # idx = 14445
+    # idx = 46785
+    idx = 46785
     lang_prompt = "push the switch upwards"
 
     model_ckpt = cfg.paths.model_weights_path
     priot_ckpt = cfg.paths.prior_weights_path
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if save_video:
-        output_video_path = 'train_data_video.mp4'
+        output_video_path = 'encoder_decoder.mp4'
         frame_size = (400,400)
         fps = 15
         # Initialize the VideoWriter
@@ -71,7 +74,7 @@ def main(cfg):
         video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
 
     processed_data_path = cfg.paths.processed_data_path
-    custom_dataset = CustomDataset_Shared(processed_data_path)
+    custom_dataset = CustomDataset_Cont(processed_data_path)
     # attach_pos = cfg.prior.attach_pos
     # gpt_config = GPTConfig(vocab_size=cfg.prior.vocab_size, block_size=cfg.prior.block_size, output_dim=cfg.prior.output_dim, discrete_input=True)
     # gpt_prior_model = GPT(gpt_config).to(device)
