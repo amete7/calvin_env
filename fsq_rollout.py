@@ -36,7 +36,7 @@ def get_language_features(text):
     return language_features
 
 def get_indices(gpt_prior_model, attach_emb, attach_pos, device):
-    max_indices = 14
+    max_indices = 32
     dummy_indices = [cfg.prior.pad_token[0]]
     indices = dummy_indices
     for _ in range(max_indices):
@@ -65,8 +65,12 @@ torch.manual_seed(seed)
 def main(cfg):
     max_steps = 1000
     save_video = True
-    idx = 46785
-    lang_prompt = "pick up the blue block from the sliding cabinet"
+    idx = 245
+    lang_prompt = "open the cabinet drawer"
+    # lang_prompt = "toggle the button to turn on the green light"
+    # lang_prompt = "grasp the pink block, then rotate it left"
+    # lang_prompt = "pick up the blue block from the sliding cabinet"
+    # lang_prompt = "pick up the red block in the sliding cabinet"
 
     model_ckpt = cfg.paths.model_weights_path
     priot_ckpt = cfg.paths.prior_weights_path

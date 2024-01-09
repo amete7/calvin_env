@@ -9,7 +9,7 @@ import torch
 from transformers import CLIPModel, CLIPProcessor
 import sys
 sys.path.append('/home/amete7/diffusion_dynamics/diff_skill/code')
-from model_conv import SkillAutoEncoder
+from model_conv_final import SkillAutoEncoder
 from gpt_prior_add_obs import GPT, GPTConfig
 from dataset.dataset_calvin import CustomDataset_Cont
 
@@ -36,7 +36,7 @@ def get_language_features(text):
     return language_features
 
 def get_indices(gpt_prior_model, attach_emb, attach_pos, device):
-    max_indices = 14
+    max_indices = 8
     dummy_indices = [cfg.prior.pad_token[0]]
     indices = dummy_indices
     for _ in range(max_indices):
@@ -66,13 +66,18 @@ def main(cfg):
     max_steps = 1000
     save_video = True
     # idx = 46785
-    lang_prompt = "pick up the blue block"
+    lang_prompt = "open the drawer"
+    # lang_prompt = "slide the door to the left side"
+    # lang_prompt = "push the switch upwards"
+    # lang_prompt = "pick up the red block"
+    # lang_prompt = "pick up the blue block"
+    # lang_prompt = "toggle the button to turn on the green light"
 
     model_ckpt = cfg.paths.model_weights_path
     priot_ckpt = cfg.paths.prior_weights_path
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if save_video:
-        output_video_path = 'prior_decoder.mp4'
+        output_video_path = 'prior_drawer.mp4'
         frame_size = (400,400)
         fps = 15
         # Initialize the VideoWriter

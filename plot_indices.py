@@ -13,6 +13,10 @@ from model_conv_final import SkillAutoEncoder
 from gpt_prior import GPT, GPTConfig
 from dataset.dataset_calvin import CustomDataset_Cont
 
+import matplotlib.pyplot as plt
+import imageio
+import os
+
 model_name = "openai/clip-vit-base-patch32"
 processor = CLIPProcessor.from_pretrained(model_name)
 clip_model = CLIPModel.from_pretrained(model_name)
@@ -55,10 +59,11 @@ torch.manual_seed(seed)
 
 def main(cfg):
     max_steps = 1000
-    save_video = True
+    save_video = False
+    idx = 0
     # idx = 245
     # idx = 105
-    idx = 1132
+    # idx = 1132
     # idx = 46785
     # idx = 785
     lang_prompt = "push the switch upwards"
@@ -103,58 +108,86 @@ def main(cfg):
     # with torch.no_grad():
     #     indices = get_indices(gpt_prior_model, attach_emb, attach_pos, device)
     # print(indices,'indices')
-
-    data = custom_dataset[idx]
-    obs = data['obs'].unsqueeze(0).to(device)
-    action = data['action'].unsqueeze(0).to(device)
-    env_state = data['env_state'][0].numpy()
-    robot_state = env_state[:15]
-    scene_state = env_state[15:]
-    print(obs.shape,'obs_shape')
-    env = hydra.utils.instantiate(cfg.env)
-    observation = env.reset(robot_state,scene_state)
-
     model = SkillAutoEncoder(cfg.model)
     state_dict = torch.load(model_ckpt, map_location='cuda')
     model.load_state_dict(state_dict)
     model = model.to(device)
     model.eval()
     print('model_loaded')
-    with torch.no_grad():
-        latent = model.encode(obs, action)
-        z, indices = model.vq(latent)
-    print(indices)
+
+    for og_idx in range(11):
+        image_paths = []
+        start_index = 33*og_idx
+        for idx in range(start_index, start_index+33):
+            if idx%33==0:
+                complete_indices = []
+                print('next skill')
+            data = custom_dataset[idx]
+            obs = data['obs'].unsqueeze(0).to(device)
+            action = data['action'].unsqueeze(0).to(device)
+            
+            with torch.no_grad():
+                latent = model.encode(obs, action)
+                z, indices = model.vq(latent)
+            indices = indices.squeeze(0).cpu().numpy()
+            
+            if idx%33==0 or idx%33==32:
+                complete_indices.append(indices)
+            if idx%33==32:
+                complete_indices = np.concatenate(complete_indices, axis=0)
+                # Create a bar plot of the indices
+                plt.bar(np.arange(len(complete_indices)), complete_indices)
+                plt.title(f'Indices at skill {og_idx}')
+                plt.xlabel('Index')
+                plt.ylabel('Value')
+
+                # Save the plot as an image
+                image_path = f'indices_32_res_{og_idx}.png'
+                plt.savefig(image_path)
+                plt.close()
+
+                # # Add the image path to the list
+                # image_paths.append(image_path)
+
+        # # Create a GIF from the images
+        # images = [imageio.imread(image_path) for image_path in image_paths]
+        # imageio.mimsave(f'indices{og_idx}.gif', images, duration=500)
+
+        # # Remove the image files
+        # for image_path in image_paths:
+        #     os.remove(image_path)
+        
     # return
     # indices = torch.randint(0, 1000, (skill_block_size,)).to(device)
     # with torch.no_grad():
     #     z = model.vq.indices_to_codes(indices)
     # z = z.unsqueeze(0).to(device)
     # print(z.shape,'z_shape')
-    init_emb = obs[:, 0, ...]
-    with torch.no_grad():
-        action = model.decode(z, init_emb).squeeze(0).cpu().numpy()
-        # action = model.decode_eval(z, front_emb).squeeze(0).cpu().numpy()
-    # print(action)
-    # return
-    done = False
-    step_idx = 0
-    for timestep in tqdm(range(len(action))):
-        action_to_take = action[timestep].copy()
-        action_to_take[-1] = int((int(action[timestep][-1] >= 0) * 2) - 1)
-        action_to_take_abs = ((action_to_take[0],action_to_take[1],action_to_take[2]),(action_to_take[3],action_to_take[4],action_to_take[5]),(action_to_take[-1],))
-        # print(action_to_take_abs)
-        observation, reward, done, info = env.step(action_to_take_abs)
-        if save_video:
-            rgb = env.render(mode="rgb_array")[:,:,::-1]
-            video_writer.write(rgb)
-        step_idx += 1
-        if step_idx > max_steps:
-            done = True
-        # if done:
-        #     break
-    if save_video:
-        video_writer.release()
-        print(f"Video saved to {output_video_path}")
+    # init_emb = obs[:, 0, ...]
+    # with torch.no_grad():
+    #     action = model.decode(z, init_emb).squeeze(0).cpu().numpy()
+    #     # action = model.decode_eval(z, front_emb).squeeze(0).cpu().numpy()
+    # # print(action)
+    # # return
+    # done = False
+    # step_idx = 0
+    # for timestep in tqdm(range(len(action))):
+    #     action_to_take = action[timestep].copy()
+    #     action_to_take[-1] = int((int(action[timestep][-1] >= 0) * 2) - 1)
+    #     action_to_take_abs = ((action_to_take[0],action_to_take[1],action_to_take[2]),(action_to_take[3],action_to_take[4],action_to_take[5]),(action_to_take[-1],))
+    #     # print(action_to_take_abs)
+    #     observation, reward, done, info = env.step(action_to_take_abs)
+    #     if save_video:
+    #         rgb = env.render(mode="rgb_array")[:,:,::-1]
+    #         video_writer.write(rgb)
+    #     step_idx += 1
+    #     if step_idx > max_steps:
+    #         done = True
+    #     # if done:
+    #     #     break
+    # if save_video:
+    #     video_writer.release()
+    #     print(f"Video saved to {output_video_path}")
 
 if __name__== "__main__":
     

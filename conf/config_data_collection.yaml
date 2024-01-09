@@ -21,8 +21,8 @@ defaults:
 
 paths:
     stats_file_path: /satassdscratch/scml-shared/calvin_data/task_D_D/training/statistics.yaml
-    model_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/ckpt_conv_32_14_700.bin
-    prior_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/ckpt_prior_conv_add_obs_100.bin
+    model_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/ckpt_conv_8_mlp_1000.bin
+    prior_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/ckpt_tprior_conv_8_mlp_sdrop_500.bin
     processed_data_path: /satassdscratch/scml-shared/calvin_data/task_D_D/clip_data_lang.npz
 
 prior:
@@ -53,10 +53,10 @@ model:
      vq_decay: 0.99
      commitment_loss_weight: 0.25
      fsq_level: [8,5,5,5]
-     kernel_sizes: [4,2] # [8,4] for 64 and [8,2] for 32, [8,4] for 32 for 10 indices
-     strides: [2,1]
+     kernel_sizes: [4,3] # [8,4] for 64 and [8,2] for 32, [8,4] for 32 for 10 indices
+     strides: [2,2]
      dilations: [1,1] # [1,2] for 64 and [1,1] for 32 for 10 indices
-     use_residual: 'old'
+     use_residual: 'False'
      decoder_type: 'mingpt'
      decoder_dim: 512
      gru_hidden_dim: 512
