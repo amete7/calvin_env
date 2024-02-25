@@ -65,11 +65,11 @@ torch.manual_seed(seed)
 def main(cfg):
     max_steps = 1000
     save_video = True
-    idx = 399 +20
-    lang_prompt = "open the cabinet drawer"
-    # lang_prompt = "slide the door to the left side"
+    idx = 57 + 20
+    # lang_prompt = "open the cabinet drawer"
+    lang_prompt = "slide the door to the left side"
     # lang_prompt = "push the switch upwards"
-    # lang_prompt = "pick up the red block"
+    # lang_prompt = "pick up the red block from the table"
     # lang_prompt = "pick up the blue block"
     # lang_prompt = "toggle the button to turn on the green light"
 
@@ -77,7 +77,7 @@ def main(cfg):
     priot_ckpt = cfg.paths.prior_weights_path
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if save_video:
-        output_video_path = f'prior_drawer_{idx//57}.mp4'
+        output_video_path = f'lr15c_500_prior_data_{idx//57}.mp4'
         frame_size = (400,400)
         fps = 15
         # Initialize the VideoWriter
@@ -100,11 +100,11 @@ def main(cfg):
     model.eval()
     print('model_loaded')
 
-    # robot_init_state, scene_state = get_init_state(idx)
+    robot_init_state, scene_state = get_init_state(idx)
     env = hydra.utils.instantiate(cfg.env)
-    observation = env.reset()
+    observation = env.reset(robot_init_state,scene_state)
     # print(observation.keys())
-    for i in range(4):
+    for i in range(1):
         front_rgb = observation['rgb_obs']['rgb_static']
         gripper_rgb = observation['rgb_obs']['rgb_gripper']
         robot_state = observation['robot_obs']
@@ -134,12 +134,13 @@ def main(cfg):
             action = model.decode(z, init_emb).squeeze(0).cpu().numpy()
             # action = model.decode_eval(z, front_emb).squeeze(0).cpu().numpy()
         # print(action)
+        action[:,-1] = (((action[:,-1] >= 0) * 2) - 1).astype(int)
         # return
         done = False
         step_idx = 0
-        for timestep in tqdm(range(len(action))):
+        for timestep in range(len(action)):
             action_to_take = action[timestep].copy()
-            action_to_take[-1] = int((int(action[timestep][-1] >= 0) * 2) - 1)
+            # action_to_take[-1] = int((int(action[timestep][-1] >= 0) * 2) - 1)
             action_to_take_abs = ((action_to_take[0],action_to_take[1],action_to_take[2]),(action_to_take[3],action_to_take[4],action_to_take[5]),(action_to_take[-1],))
             # print(action_to_take_abs)
             observation, reward, done, info = env.step(action_to_take_abs)

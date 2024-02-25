@@ -1,0 +1,79 @@
+seed: 0
+use_vr: true
+data_path: data
+save_dir: /tmp
+record: true
+
+hydra:
+  run:
+    dir: ${save_dir}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+defaults:
+  - cameras: no_cameras
+  - vr_input: vr_input
+  - env: play_table_env
+  - scene: calvin_scene_D_eval
+  - robot: panda_longer_finger
+  - tasks: new_playtable_tasks
+  - recorder: recorder
+  - override hydra/job_logging: colorlog
+  - override hydra/hydra_logging: colorlog
+
+exp_name: m2np_L_n2h4_d128_32
+prior_type : gpt # gpt or diff or sampler
+use_prior: true
+action_horizon: 32 # context window in this case
+num_steps: 2 # number of steps to run the environment
+save_video: true
+
+paths:
+    stats_file_path: /satassdscratch/scml-shared/calvin_data/task_D_D/training/statistics.yaml
+    model_weights_path: /satassdscratch/scml-shared/calvin_data/models/model2/endec/endec_m2_32_n2h4_d256_ff_100.bin
+    prior_weights_path_gpt: /satassdscratch/scml-shared/calvin_data/models/model2/prior/ckpt_gpt_m2zp_n2h4_d128_32_csff_100.bin
+    processed_data_path: /satassdscratch/scml-shared/calvin_data/prepared/lowdim_abcd_nopad_lang_val_data.npz
+
+prior:
+     vocab_size: 1004
+     block_size: 35 # max skill sequence length
+     output_dim: 1000 # 1000 codes + 1 eos token
+     attach_pos: [0,0] # for attaching lang and obs embeddings
+     eos_token: 1000
+     pad_token: [1001,1002,1003]
+     n_head: 4
+     n_layer: 2
+     n_embd: 128
+     obs_dim: 31
+
+model:
+     image_encoder_dim: 256
+     gripper_state_dim: 7
+     scene_state_dim: 24
+     obs_entries: [0,2]
+     act_dim: 7
+     encoder_dim: 256
+     skill_block_size: 32
+     encoder_type: 'transformer'
+     encoder_heads: 4
+     encoder_layers: 2
+     resid_pdrop: 0.1
+     attn_pdrop: 0.1
+     use_causal_attn_encoder: false
+     position_embedding_type: 'rotary'
+     vq_type: 'fsq'
+     codebook_dim: 64
+     codebook_entry: 256
+     vq_decay: 0.99
+     commitment_loss_weight: 0.25
+     fsq_level: [8,5,5,5]
+     kernel_sizes: [4,3,2]
+     strides: [1,1,1]
+     dilations: [1,1]
+     use_residual: False # always set to false
+     pooling_layers: [] # [0] for avg pooling after 1st conv layer or null for no pooling
+     use_causal_attn_decoder: false
+     decoder_type: 'mingpt'
+     decoder_dim: 256
+     decoder_layers: 2
+     decoder_heads: 4
+     gru_hidden_dim: 256
+     

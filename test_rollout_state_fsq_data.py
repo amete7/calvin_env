@@ -36,8 +36,8 @@ def get_language_features(text):
     return language_features
 
 def get_indices(gpt_prior_model, attach_emb, attach_pos, device):
-    max_indices = 8
-    dummy_indices = [cfg.prior.pad_token[0]]
+    max_indices = 9
+    dummy_indices = [cfg.prior.pad_token[0],cfg.prior.pad_token[1]]
     indices = dummy_indices
     for _ in range(max_indices):
         x = torch.tensor(indices).unsqueeze(0).to(device)
@@ -47,16 +47,7 @@ def get_indices(gpt_prior_model, attach_emb, attach_pos, device):
         next_token = logits[0,-1,:].argmax().item()
         indices.append(next_token)
         # print(indices)
-    return torch.tensor(indices[1:]).unsqueeze(0).to(device)
-
-def get_init_state(idx):
-    processed_data_path = cfg.paths.processed_data_path
-    custom_dataset = CustomDataset_Cont(processed_data_path)
-    data = custom_dataset[idx]
-    env_state = data['env_state'][0].numpy()
-    robot_state = env_state[:15]
-    scene_state = env_state[15:]
-    return robot_state, scene_state
+    return torch.tensor(indices[2:]).unsqueeze(0).to(device)
 
 seed = 42
 np.random.seed(seed)
@@ -65,34 +56,36 @@ torch.manual_seed(seed)
 def main(cfg):
     max_steps = 1000
     save_video = True
-    idx = 399 +20
-    lang_prompt = "open the cabinet drawer"
-    # lang_prompt = "slide the door to the left side"
+    # idx = 57 + 5 #20
+    # idx = 23484 + 5 # pick pink from slider
+    # idx = 19152 + 2 # pick blue from slider
+    # idx = 2793 + 5 # pick pink from drawer
+    # idx = 798 + 2 # slide red block left
+    # idx = 912 + 2 # rotate red left
+    # idx = 1197 + 2 # stack blocks
+    # idx = 2964 + 5 # stack
+    idx = 3363 + 5 # push pink left
+    # idx = 9405 +2 # rotate pink left
+    # idx = 12027 + 2 # pick red in slider
+    # idx = 8850 + 20
+    # idx = 285 + 20
+    # idx = 1596 + 12
+    # idx = 1710 + 8
+    # idx = 171 + 31
     # lang_prompt = "push the switch upwards"
-    # lang_prompt = "pick up the red block"
-    # lang_prompt = "pick up the blue block"
-    # lang_prompt = "toggle the button to turn on the green light"
 
     model_ckpt = cfg.paths.model_weights_path
-    priot_ckpt = cfg.paths.prior_weights_path
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if save_video:
-        output_video_path = f'prior_drawer_{idx//57}.mp4'
+        output_video_path = f'val_roll_endec_{idx//57}.mp4'
         frame_size = (400,400)
         fps = 15
         # Initialize the VideoWriter
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use 'mp4v' or 'xvid' for MP4, 'MJPG' for AVI
         video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
 
-    attach_pos = cfg.prior.attach_pos
-    gpt_config = GPTConfig(vocab_size=cfg.prior.vocab_size, block_size=cfg.prior.block_size, output_dim=cfg.prior.output_dim, discrete_input=True)
-    gpt_prior_model = GPT(gpt_config).to(device)
-    state_dict = torch.load(priot_ckpt, map_location='cuda')
-    gpt_prior_model.load_state_dict(state_dict)
-    gpt_prior_model = gpt_prior_model.to(device)
-    gpt_prior_model.eval()
-    print('gpt_prior_model_loaded')
-
+    processed_data_path = cfg.paths.processed_data_path
+    custom_dataset = CustomDataset_Cont(processed_data_path)
     model = SkillAutoEncoder(cfg.model)
     state_dict = torch.load(model_ckpt, map_location='cuda')
     model.load_state_dict(state_dict)
@@ -100,41 +93,39 @@ def main(cfg):
     model.eval()
     print('model_loaded')
 
-    # robot_init_state, scene_state = get_init_state(idx)
+    data = custom_dataset[idx]
+    env_state = data['complete_state'][0].numpy()
+    robot_state = env_state[:15]
+    scene_state = env_state[15:]
     env = hydra.utils.instantiate(cfg.env)
-    observation = env.reset()
-    # print(observation.keys())
-    for i in range(4):
-        front_rgb = observation['rgb_obs']['rgb_static']
-        gripper_rgb = observation['rgb_obs']['rgb_gripper']
-        robot_state = observation['robot_obs']
-        # print(robot_state[:6])
-        robot_state = np.concatenate([robot_state[:6],[robot_state[14]]])
-        robot_state = torch.tensor(robot_state).unsqueeze(0).to(device)
-        # print(robot_state.shape,'robot_state_shape')
-        front_emb = get_clip_features(front_rgb)
-        gripper_emb = get_clip_features(gripper_rgb)
-        lang_emb = get_language_features(lang_prompt)
-        init_emb = torch.cat((front_emb,gripper_emb,robot_state),dim=-1).float().to(device)
-        attach_emb = (lang_emb,init_emb)
-        # print(lang_emb.shape,'lang_emb_shape')
-        # print(lang_emb.device,'lang_emb_device')
-        # print(init_emb.device,'init_emb_device')
-        with torch.no_grad():
-            indices = get_indices(gpt_prior_model, attach_emb, attach_pos, device)
-        print(indices,'indices')
-        # return
+    observation = env.reset(robot_state,scene_state)
 
-        # indices = torch.randint(0, 1000, (skill_block_size,)).to(device)
+    # print(observation['scene_obs'].shape)
+    action_horizon = 8
+    for i in range(64//action_horizon):
+        data = custom_dataset[idx + action_horizon*i]
+        obs = data['lowdim_obs'].unsqueeze(0).to(device)
+        action = data['action'].unsqueeze(0).to(device)
         with torch.no_grad():
-            z = model.vq.indices_to_codes(indices)
-        # z = z.unsqueeze(0).to(device)
-        # print(z.shape,'z_shape')
+            latent = model.encode(obs, action)
+            z, indices = model.vq(latent)
+        print(indices)
+        init_emb = obs[:, 0, ...]
+        if i != 0:
+            # front_rgb = observation['rgb_obs']['rgb_static']
+            # gripper_rgb = observation['rgb_obs']['rgb_gripper']
+            robot_state = observation['robot_obs']
+            # print(robot_state[:6])
+            robot_state = np.concatenate([robot_state[:6],[robot_state[14]]])
+            robot_state = torch.tensor(robot_state).unsqueeze(0).to(device)
+            scene_state = torch.tensor(observation['scene_obs']).unsqueeze(0).to(device)
+            # print(robot_state.shape,'robot_state_shape')
+            # front_emb = get_clip_features(front_rgb)
+            # gripper_emb = get_clip_features(gripper_rgb)
+            # init_emb = torch.cat((front_emb,gripper_emb,robot_state),dim=-1).float().to(device)
+            init_emb = torch.cat((scene_state,robot_state),dim=-1).float().to(device)
         with torch.no_grad():
             action = model.decode(z, init_emb).squeeze(0).cpu().numpy()
-            # action = model.decode_eval(z, front_emb).squeeze(0).cpu().numpy()
-        # print(action)
-        # return
         done = False
         step_idx = 0
         for timestep in tqdm(range(len(action))):
@@ -149,8 +140,8 @@ def main(cfg):
             step_idx += 1
             if step_idx > max_steps:
                 done = True
-        # if done:
-        #     break
+            # if done:
+            #     break
     if save_video:
         video_writer.release()
         print(f"Video saved to {output_video_path}")
@@ -161,7 +152,7 @@ if __name__== "__main__":
 
     with initialize(config_path="conf"):
         # print("config path:")
-        cfg = compose(config_name="config_data_collection.yaml", overrides=["cameras=static_and_gripper"])
+        cfg = compose(config_name="config_data_collection_state.yaml", overrides=["cameras=static_and_gripper"])
         cfg.env["use_egl"] = False
         cfg.env["show_gui"] = False
         cfg.env["use_vr"] = False

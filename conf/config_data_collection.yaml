@@ -19,11 +19,16 @@ defaults:
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
 
+exp_name: 8_2
+prior_type : gpt # gpt or diff
+use_prior: true
+
 paths:
     stats_file_path: /satassdscratch/scml-shared/calvin_data/task_D_D/training/statistics.yaml
-    model_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/ckpt_conv_8_mlp_1000.bin
-    prior_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/ckpt_tprior_conv_8_mlp_sdrop_500.bin
-    processed_data_path: /satassdscratch/scml-shared/calvin_data/task_D_D/clip_data_lang.npz
+    model_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/resnet18/endec_8_2_vis_100.bin
+    prior_weights_path: /satassdscratch/scml-shared/calvin_data/task_D_D/resnet18/ckpt_diff_8_2_vis_100_ddpm_200_og.bin
+    prior_weights_path_gpt: /satassdscratch/scml-shared/calvin_data/task_D_D/resnet18/ckpt_gpt_8_2_vis_100.bin
+    processed_data_path: /satassdscratch/scml-shared/calvin_data/task_D_D/resnet18_val_data_lang.npz
 
 prior:
     vocab_size: 1004
@@ -32,10 +37,20 @@ prior:
     attach_pos: [0,0]
     eos_token: 1000
     pad_token: [1001,1002]
+    obs_size: 1031 # 31 or 1031
+
+diff_prior:
+    diffusion_steps: 1000
+    codebook_size: 1000
+    input_dim: 10
+    cond_dim: 1543 # 512 (lang_clip) + 512 + 512 + 7 (front+gripper+robot_state)
+    schedule_type: ddpm # ddim or ddpm
+    beta_schedule: 'squaredcos_cap_v2' # squaredcos_cap_v2 or linear
 
 model:
      image_encoder_dim: 512
      gripper_state_dim: 7
+     scene_state_dim: 24
      obs_entries: [1,1]
      act_dim: 7
      encoder_dim: 512
@@ -53,10 +68,11 @@ model:
      vq_decay: 0.99
      commitment_loss_weight: 0.25
      fsq_level: [8,5,5,5]
-     kernel_sizes: [4,3] # [8,4] for 64 and [8,2] for 32, [8,4] for 32 for 10 indices
-     strides: [2,2]
+     kernel_sizes: [4] # [8,4] for 64 and [8,2] for 32, [8,4] for 32 for 10 indices
+     strides: [2]
      dilations: [1,1] # [1,2] for 64 and [1,1] for 32 for 10 indices
-     use_residual: 'False'
+     use_residual: False
+     pooling_layers: [0]
      decoder_type: 'mingpt'
      decoder_dim: 512
      gru_hidden_dim: 512

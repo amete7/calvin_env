@@ -9,8 +9,8 @@ import torch
 from transformers import CLIPModel, CLIPProcessor
 import sys
 sys.path.append('/home/amete7/diffusion_dynamics/diff_skill/code')
-from model_conv_final import SkillAutoEncoder
-from gpt_prior import GPT, GPTConfig
+from model import SkillAutoEncoder
+from gpt_prior_global import GPT, GPTConfig
 from dataset.dataset_calvin import CustomDataset_Cont
 
 model_name = "openai/clip-vit-base-patch32"
@@ -56,18 +56,23 @@ torch.manual_seed(seed)
 def main(cfg):
     max_steps = 1000
     save_video = True
-    # idx = 245
-    # idx = 105
-    idx = 1132
-    # idx = 46785
-    # idx = 785
-    lang_prompt = "push the switch upwards"
+    # idx = 57 + 5 #20
+    # idx = 23484 + 5 # pick pink from slider
+    # idx = 19152 + 2 # pick blue from slider
+    idx = 2793 + 5 # pick pink from drawer
+    # idx = 2964 + 5
+    # idx = 3363 + 5
+    # idx = 8850 + 20
+    # idx = 285 + 20
+    # idx = 1596 + 12
+    # idx = 1710 + 8
+    # idx = 171 + 31
+    # lang_prompt = "push the switch upwards"
 
     model_ckpt = cfg.paths.model_weights_path
-    priot_ckpt = cfg.paths.prior_weights_path
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if save_video:
-        output_video_path = 'encoder_decoder.mp4'
+        output_video_path = f'val_encdec_{idx//57}.mp4'
         frame_size = (400,400)
         fps = 15
         # Initialize the VideoWriter
@@ -76,38 +81,11 @@ def main(cfg):
 
     processed_data_path = cfg.paths.processed_data_path
     custom_dataset = CustomDataset_Cont(processed_data_path)
-    # attach_pos = cfg.prior.attach_pos
-    # gpt_config = GPTConfig(vocab_size=cfg.prior.vocab_size, block_size=cfg.prior.block_size, output_dim=cfg.prior.output_dim, discrete_input=True)
-    # gpt_prior_model = GPT(gpt_config).to(device)
-    # state_dict = torch.load(priot_ckpt, map_location='cuda')
-    # gpt_prior_model.load_state_dict(state_dict)
-    # gpt_prior_model = gpt_prior_model.to(device)
-    # gpt_prior_model.eval()
-    # print('gpt_prior_model_loaded')
-    # # print(observation.keys())
-    # front_rgb = observation['rgb_obs']['rgb_static']
-    # gripper_rgb = observation['rgb_obs']['rgb_gripper']
-    # robot_state = observation['robot_obs']
-    # # print(robot_state[:6])
-    # robot_state = np.concatenate([robot_state[:6],[robot_state[14]]])
-    # robot_state = torch.tensor(robot_state).unsqueeze(0).to(device)
-    # # print(robot_state.shape,'robot_state_shape')
-    # front_emb = get_clip_features(front_rgb)
-    # gripper_emb = get_clip_features(gripper_rgb)
-    # lang_emb = get_language_features(lang_prompt)
-    # init_emb = torch.cat((front_emb,gripper_emb,robot_state),dim=-1).float().to(device)
-    # attach_emb = (lang_emb,init_emb)
-    # # print(lang_emb.shape,'lang_emb_shape')
-    # # print(lang_emb.device,'lang_emb_device')
-    # # print(init_emb.device,'init_emb_device')
-    # with torch.no_grad():
-    #     indices = get_indices(gpt_prior_model, attach_emb, attach_pos, device)
-    # print(indices,'indices')
 
     data = custom_dataset[idx]
-    obs = data['obs'].unsqueeze(0).to(device)
+    obs = data['lowdim_obs'].unsqueeze(0).to(device)
     action = data['action'].unsqueeze(0).to(device)
-    env_state = data['env_state'][0].numpy()
+    env_state = data['complete_state'][0].numpy()
     robot_state = env_state[:15]
     scene_state = env_state[15:]
     print(obs.shape,'obs_shape')
@@ -124,18 +102,9 @@ def main(cfg):
         latent = model.encode(obs, action)
         z, indices = model.vq(latent)
     print(indices)
-    # return
-    # indices = torch.randint(0, 1000, (skill_block_size,)).to(device)
-    # with torch.no_grad():
-    #     z = model.vq.indices_to_codes(indices)
-    # z = z.unsqueeze(0).to(device)
-    # print(z.shape,'z_shape')
     init_emb = obs[:, 0, ...]
     with torch.no_grad():
         action = model.decode(z, init_emb).squeeze(0).cpu().numpy()
-        # action = model.decode_eval(z, front_emb).squeeze(0).cpu().numpy()
-    # print(action)
-    # return
     done = False
     step_idx = 0
     for timestep in tqdm(range(len(action))):

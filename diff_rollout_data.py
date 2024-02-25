@@ -10,7 +10,10 @@ from transformers import CLIPModel, CLIPProcessor
 import sys
 sys.path.append('/home/amete7/diffusion_dynamics/diff_skill/code')
 from model import SkillAutoEncoder
-from gpt_prior_global import GPT, GPTConfig
+# from gpt_prior_global import GPT, GPTConfig
+from diffusion_prior import get_sample
+from unet import ConditionalUnet1D
+from diffusers import DDPMScheduler, DDIMScheduler
 from dataset.dataset_calvin import CustomDataset_Cont
 
 model_name = "openai/clip-vit-base-patch32"
@@ -65,33 +68,65 @@ torch.manual_seed(seed)
 def main(cfg):
     max_steps = 1000
     save_video = True
-    idx = 399 +20
-    lang_prompt = "open the cabinet drawer"
+    # idx = 399 + 20
+    # idx = 57 + 20
+    # idx = 285 + 20
+    # idx = 1596 + 12
+    # idx = 1710 + 8
+    # idx = 171 + 31
+    # idx = 1938 + 5
+    # idx = 798 + 5
+    idx = 1197 + 5
+    # idx = 1026 + 5
+    # lang_prompt = "open the cabinet drawer"
     # lang_prompt = "slide the door to the left side"
     # lang_prompt = "push the switch upwards"
-    # lang_prompt = "pick up the red block"
+    # lang_prompt = "pick up the red block from the table"
     # lang_prompt = "pick up the blue block"
     # lang_prompt = "toggle the button to turn on the green light"
+    # lang_prompt = "grasp the pink block, then rotate it left"
+    # lang_prompt = "grasp the blue block and lift it up"
+    lang_prompt = "grasp the red block from the drawer"
+    # lang_prompt = "take the red block and rotate it left"
 
     model_ckpt = cfg.paths.model_weights_path
     priot_ckpt = cfg.paths.prior_weights_path
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     if save_video:
-        output_video_path = f'prior_drawer_{idx//57}.mp4'
+        output_video_path = f'{cfg.exp_name}_{idx//57}.mp4'
         frame_size = (400,400)
         fps = 15
         # Initialize the VideoWriter
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # Use 'mp4v' or 'xvid' for MP4, 'MJPG' for AVI
         video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
 
-    attach_pos = cfg.prior.attach_pos
-    gpt_config = GPTConfig(vocab_size=cfg.prior.vocab_size, block_size=cfg.prior.block_size, output_dim=cfg.prior.output_dim, discrete_input=True)
-    gpt_prior_model = GPT(gpt_config).to(device)
-    state_dict = torch.load(priot_ckpt, map_location='cuda')
-    gpt_prior_model.load_state_dict(state_dict)
-    gpt_prior_model = gpt_prior_model.to(device)
-    gpt_prior_model.eval()
-    print('gpt_prior_model_loaded')
+    # attach_pos = cfg.prior.attach_pos
+    # gpt_config = GPTConfig(vocab_size=cfg.prior.vocab_size, block_size=cfg.prior.block_size, output_dim=cfg.prior.output_dim, discrete_input=True)
+    # gpt_prior_model = GPT(gpt_config).to(device)
+    # state_dict = torch.load(priot_ckpt, map_location='cuda')
+    # gpt_prior_model.load_state_dict(state_dict)
+    # gpt_prior_model = gpt_prior_model.to(device)
+    # gpt_prior_model.eval()
+    # print('gpt_prior_model_loaded')
+    net = ConditionalUnet1D(
+        input_dim=cfg.diff_prior.input_dim, 
+        local_cond_dim=None,
+        global_cond_dim=512+1031,
+        diffusion_step_embed_dim=256,
+        down_dims=[256,512,1024],
+        kernel_size=3,
+        n_groups=8,
+        cond_predict_scale=True
+    )
+    ckpt = torch.load(priot_ckpt, map_location='cuda')
+    net.load_state_dict(ckpt)
+    net = net.to(device)
+    net.eval()
+    print('net_loaded')
+    if cfg.diff_prior.schedule_type == 'ddpm':
+        noise_scheduler = DDPMScheduler(num_train_timesteps=cfg.diff_prior.diffusion_steps,beta_schedule=cfg.diff_prior.beta_schedule,)
+    else:
+        noise_scheduler = DDIMScheduler(num_train_timesteps=cfg.diff_prior.diffusion_steps,beta_schedule=cfg.diff_prior.beta_schedule,)
 
     model = SkillAutoEncoder(cfg.model)
     state_dict = torch.load(model_ckpt, map_location='cuda')
@@ -100,11 +135,11 @@ def main(cfg):
     model.eval()
     print('model_loaded')
 
-    # robot_init_state, scene_state = get_init_state(idx)
+    robot_init_state, scene_state = get_init_state(idx)
     env = hydra.utils.instantiate(cfg.env)
-    observation = env.reset()
+    observation = env.reset(robot_init_state,scene_state)
     # print(observation.keys())
-    for i in range(4):
+    for i in range(3):
         front_rgb = observation['rgb_obs']['rgb_static']
         gripper_rgb = observation['rgb_obs']['rgb_gripper']
         robot_state = observation['robot_obs']
@@ -116,15 +151,16 @@ def main(cfg):
         gripper_emb = get_clip_features(gripper_rgb)
         lang_emb = get_language_features(lang_prompt)
         init_emb = torch.cat((front_emb,gripper_emb,robot_state),dim=-1).float().to(device)
-        attach_emb = (lang_emb,init_emb)
+        # attach_emb = (lang_emb,init_emb)z
+        global_cond = torch.cat([init_emb, lang_emb], -1)
+        # print(global_cond.shape,'global_cond_shape')
         # print(lang_emb.shape,'lang_emb_shape')
         # print(lang_emb.device,'lang_emb_device')
         # print(init_emb.device,'init_emb_device')
         with torch.no_grad():
-            indices = get_indices(gpt_prior_model, attach_emb, attach_pos, device)
+            indices = get_sample(noise_scheduler, net, global_cond, num_inference_steps=cfg.diff_prior.diffusion_steps, batch_size=1, shape=(8, cfg.diff_prior.input_dim), device=0, codebook_size=1000)
         print(indices,'indices')
         # return
-
         # indices = torch.randint(0, 1000, (skill_block_size,)).to(device)
         with torch.no_grad():
             z = model.vq.indices_to_codes(indices)
@@ -134,12 +170,13 @@ def main(cfg):
             action = model.decode(z, init_emb).squeeze(0).cpu().numpy()
             # action = model.decode_eval(z, front_emb).squeeze(0).cpu().numpy()
         # print(action)
+        action[:,-1] = (((action[:,-1] >= 0) * 2) - 1).astype(int)
         # return
         done = False
         step_idx = 0
-        for timestep in tqdm(range(len(action))):
+        for timestep in range(len(action)):
             action_to_take = action[timestep].copy()
-            action_to_take[-1] = int((int(action[timestep][-1] >= 0) * 2) - 1)
+            # action_to_take[-1] = int((int(action[timestep][-1] >= 0) * 2) - 1)
             action_to_take_abs = ((action_to_take[0],action_to_take[1],action_to_take[2]),(action_to_take[3],action_to_take[4],action_to_take[5]),(action_to_take[-1],))
             # print(action_to_take_abs)
             observation, reward, done, info = env.step(action_to_take_abs)
