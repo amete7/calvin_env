@@ -2,68 +2,37 @@ import numpy as np
 import torch
 from torch.nn.functional import log_softmax
 
-def beam_search_decode(model, input_ids, attach_emb, max_length, beam_size=3, temperature=1.0):
-    """Performs autoregressive decoding using beam search."""
-    device = input_ids.device
-    input_ids = input_ids.unsqueeze(0)
-    input_length = input_ids.size(1)
+def beam_search(start_token, model, attach_emb, max_len, device, beam_size, temperature):
+    # Initialize beam search variables
+    beam = [(torch.tensor([start_token], device=device), 0)]  # (sequence, cumulative log probability)
 
-    # Initialize beam search
-    beam_scores = torch.zeros(1, beam_size, device=device)
-    beam_seqs = torch.zeros(1, beam_size, input_length + max_length, dtype=torch.long, device=device)
-    beam_seqs[:, :, :input_length] = input_ids
-    finished_seqs = []
+    # Perform beam search
+    for _ in range(max_len):
+        new_beam = []
 
-    for step in range(max_length):
-        if len(finished_seqs) == beam_size:
-            break
+        for seq, seq_score in beam:
+            with torch.no_grad():
+                x = seq.unsqueeze(0).to(device)
+                outs = model(x, None, attach_emb, [0, 0])
+                logits = outs[0, -1, :] / temperature
+                log_probs = torch.log_softmax(logits, dim=-1)
 
-        next_candidates = []
-        for i in range(beam_size):
-            input_ids = beam_seqs[:, i, :input_length + step]
-            logits = model(input_ids).squeeze(0) / temperature
-            log_probs = log_softmax(logits, dim=-1)
+            # Get top candidates using beam search
+            top_log_probs, top_indices = torch.topk(log_probs, beam_size, dim=-1)
 
-            # Select top k candidates from current beam
-            scores, indices = torch.topk(log_probs[-1, :], beam_size)
-            print(scores, 'scores_first')
-            scores = scores + beam_scores[:, i]
-            print(scores, 'scores')
-            for j in range(beam_size):
-                score = scores[j].item()
-                if score > -float("inf"):
-                    next_candidates.append((score, indices[j].item(), i))
+            for log_prob, index in zip(top_log_probs.squeeze().tolist(), top_indices.squeeze().tolist()):
+                new_seq = torch.cat((seq, torch.tensor([index], device=device)), dim=0)
+                new_score = seq_score + log_prob
+                new_beam.append((new_seq, new_score))
 
-        # Select top beam_size candidates among all candidates
-        next_candidates.sort(reverse=True)
-        next_candidates = next_candidates[:beam_size]
+        # Sort and select top sequences from the beam
+        new_beam.sort(key=lambda x: x[1], reverse=True)
+        beam = new_beam[:beam_size]
 
-        beam_scores_new = torch.zeros(1, beam_size, device=device)
-        beam_seqs_new = torch.zeros(1, beam_size, input_length + max_length, dtype=torch.long, device=device)
+    # Select the sequence with the highest score
+    best_seq, _ = max(beam, key=lambda x: x[1])
 
-        for idx, (score, token, beam_idx) in enumerate(next_candidates):
-            beam_scores_new[:, idx] = score
-            beam_seqs_new[:, idx, :input_length + step] = beam_seqs[:, beam_idx, :input_length + step]
-            beam_seqs_new[:, idx, input_length + step] = token
-
-        beam_scores = beam_scores_new
-        beam_seqs = beam_seqs_new
-
-    best_seq = beam_seqs[0, 0, input_length:].tolist()
-    return best_seq
-
-# # Example usage
-# # Assuming model and inputs are defined
-# # model = YourGPTModel(...)
-# # inputs = YourInputTensor
-
-# # Generate sequences using beam search
-# beam_width = 3
-# n_samples = 5
-# generated_sequences = beam_search_decode(model, inputs, beam_width, n_samples)
-# print(generated_sequences)
-
-
+    return best_seq.tolist()[1:]  # Convert to list
 
 def get_top_k_probs(logits, k, temperature=1.0):
     # Apply temperature scaling
@@ -80,6 +49,11 @@ def get_top_k_probs(logits, k, temperature=1.0):
     # top_k_probs /= np.sum(top_k_probs)
     
     return top_k_probs
+
+def random_sampling(logits):
+    # Sample token index randomly
+    sampled_index = np.random.choice(len(logits))
+    return sampled_index
 
 def greedy_sampling(logits):
     # Find the token index with the highest probability

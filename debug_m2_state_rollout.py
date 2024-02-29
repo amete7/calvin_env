@@ -10,11 +10,11 @@ import torch.nn as nn
 from transformers import CLIPModel, CLIPProcessor
 import sys
 import collections
-from utils import top_k_sampling, top_p_sampling, greedy_sampling, get_top_k_probs, beam_search_decode
+from utils import top_k_sampling, top_p_sampling, greedy_sampling, get_top_k_probs, beam_search, random_sampling
 sys.path.append('/home/amete7/diffusion_dynamics/diff_skill/code')
 from model_v2 import SkillAutoEncoder
-from gpt_prior_local import GPT, GPTConfig
-from dataset.dataset_calvin import CustomDataset_Cont, CustomDataset_ABCD_lang_no_pad, CustomDataset_ABCD_lang_zero_pad
+from gpt_prior_global import GPT, GPTConfig
+from dataset.dataset_calvin import CustomDataset_Cont, CustomDataset_ABCD_lang_no_pad, CustomDataset_ABCD_lang
 
 model_name = "openai/clip-vit-base-patch32"
 processor = CLIPProcessor.from_pretrained(model_name)
@@ -30,38 +30,24 @@ def get_language_features(text):
     # language_features = language_features.cpu()
     return language_features
 
-def get_beam_search_sequences(model, attach_emb, device):
-    inputs = torch.tensor([cfg.prior.pad_token[0]]).to(device)
-    outputs = beam_search_decode(model, inputs, attach_emb, 5, 5)
+def get_beam_search_indices(model, attach_emb, max_len, device):
+    start_token = cfg.prior.pad_token[0]
+    outputs = beam_search(start_token, model, attach_emb, max_len, device, 5, 1.0)
     print(outputs)
     return outputs
 
 def get_indices(model, attach_emb, max_len, device):
-    indices = [1001,1002,1003]
+    indices = [cfg.prior.pad_token[0]]
     with torch.no_grad():
         for i in range(max_len):
             x = torch.tensor(indices).unsqueeze(0).to(device)
             outs = model(x, None, attach_emb, [0,0])
             logits = outs[0,-1,:]
             index = top_p_sampling(logits.cpu().numpy(), 0.9, temperature=1.1)
+            # index = random_sampling(logits.cpu().numpy())
             indices.append(index)
     print(indices)
-    return indices[3:]
-
-def get_index(model, attach_emb, indices, device):
-    if len(indices) > 31:
-        indices = indices[-31:]
-    dummy_index = [cfg.prior.pad_token[0]]
-    indices = dummy_index + indices
-    x = torch.tensor(indices).unsqueeze(0).to(device)
-    with torch.no_grad():
-        outs = model(x, None, attach_emb, [0,0])
-    logits = outs[0,-1,:]
-    # print(get_top_k_probs(logits.cpu().numpy(), 2, temperature=1.0),'top_k_probs')
-    # index = top_k_sampling(logits.cpu().numpy(), 5, temperature=1.2) # low temp<1 for precise, high>1 for diverse
-    index = top_p_sampling(logits.cpu().numpy(), 0.9, temperature=0.9)
-    # index = greedy_sampling(logits.cpu().numpy())
-    return index
+    return indices[1:]
 
 seed = 42
 np.random.seed(seed)
@@ -70,7 +56,8 @@ torch.manual_seed(seed)
 def main(cfg):
     max_steps = 1000
     save_video = True
-    traj_idx = 60
+    # 49, 54, 57, 60, 66
+    traj_idx = 49
 
     model_ckpt = cfg.paths.model_weights_path
     prior_ckpt_gpt = cfg.paths.prior_weights_path_gpt
@@ -79,7 +66,7 @@ def main(cfg):
     ndpt = 64+(cfg.action_horizon//2)-cfg.action_horizon+1
     if save_video:
         if cfg.use_prior:
-            output_video_path = f'{cfg.action_horizon}_{data_type}_{cfg.prior_type}_roll_{traj_idx}_top_p_t1.1.mp4'
+            output_video_path = f'{cfg.action_horizon}_{data_type}_{cfg.prior_type}_roll_{traj_idx}_beam_30.mp4'
         else:
             output_video_path = f'{cfg.action_horizon}_{data_type}_endec_roll_{traj_idx}_top_k_t.mp4'
         frame_size = (400,400)
@@ -89,7 +76,7 @@ def main(cfg):
         video_writer = cv2.VideoWriter(output_video_path, fourcc, fps, frame_size)
 
     processed_data_path = cfg.paths.processed_data_path
-    custom_dataset = CustomDataset_ABCD_lang_zero_pad(processed_data_path,pred_horizon=cfg.action_horizon, pad_length=cfg.action_horizon//2)
+    custom_dataset = CustomDataset_ABCD_lang(processed_data_path,pred_horizon=cfg.action_horizon, pad_length=cfg.action_horizon//2)
     model = SkillAutoEncoder(cfg.model)
     state_dict = torch.load(model_ckpt, map_location='cuda')
     model.load_state_dict(state_dict)
@@ -115,6 +102,7 @@ def main(cfg):
     idx = traj_idx*ndpt + 2
     data = custom_dataset[idx]
     lang_emb = data['lang_emb'].unsqueeze(0).to(device)
+    # lang_emb = get_language_features('pull the switch downwards to turn off the yellow bulb')
     env_state = data['complete_state'][0].numpy()
     robot_state = env_state[:15]
     scene_state = env_state[15:]
@@ -126,23 +114,16 @@ def main(cfg):
     robot_state = torch.tensor(robot_state).unsqueeze(0).to(device)
     scene_state = torch.tensor(observation['scene_obs']).unsqueeze(0).to(device)
     obs = torch.cat((scene_state,robot_state),dim=-1).float().to(device)
-    # obs_ctx = collections.deque([obs], maxlen=cfg.action_horizon)
-    # indices = collections.deque([], maxlen=cfg.action_horizon)
-    # return
-    # indices = [cfg.prior.pad_token[0]]
     for i in range(cfg.num_steps):
-        obs_to_use = obs
-        print(obs_to_use.shape,'obs shape')
-        # print(lang_emb.shape,'lang_emb shape')
         with torch.no_grad():
-            indices = get_indices(gpt_prior_model, (lang_emb, obs_to_use), 32, device)
-        # return
-        indices_to_use = list(indices)
-        print(indices_to_use,'indices from prior')
-        z = model.vq.indices_to_codes(torch.tensor(indices_to_use).unsqueeze(0).to(device))
+            prior_obs = model.obs_mlp(obs)
+            # indices = get_indices(gpt_prior_model, (lang_emb, prior_obs), cfg.action_horizon, device)
+            indices = get_beam_search_indices(gpt_prior_model, (lang_emb, prior_obs), cfg.action_horizon, device)
+        print(indices,'indices from prior')
+        z = model.vq.indices_to_codes(torch.tensor(indices).unsqueeze(0).to(device))
         # print(z.shape,'z shape')
         with torch.no_grad():
-            action = model.decode(z, obs_to_use).squeeze(0).cpu().numpy()
+            action = model.decode(z, obs).squeeze(0).cpu().numpy()
         # print(action,'action')
         for timestep in tqdm(range(cfg.action_horizon)):
             action_to_take = action[timestep].copy()

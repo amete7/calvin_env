@@ -19,17 +19,17 @@ defaults:
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
 
-exp_name: m2np_L_n2h4_d128_32
+exp_name: gpt_glob_n2h4_d128_m2_32_k3s1_ff_l1_100
 prior_type : gpt # gpt or diff or sampler
 use_prior: true
 action_horizon: 32 # context window in this case
-num_steps: 2 # number of steps to run the environment
+num_steps: 4 # number of steps to run the policy
 save_video: true
 
 paths:
     stats_file_path: /satassdscratch/scml-shared/calvin_data/task_D_D/training/statistics.yaml
-    model_weights_path: /satassdscratch/scml-shared/calvin_data/models/model2/endec/endec_m2_32_n2h4_d256_ff_100.bin
-    prior_weights_path_gpt: /satassdscratch/scml-shared/calvin_data/models/model2/prior/ckpt_gpt_m2zp_n2h4_d128_32_csff_100.bin
+    model_weights_path: /satassdscratch/scml-shared/calvin_data/phase3_models/modelv2/endec/endec_m2_32_k3s1_ff_l1_100.bin
+    prior_weights_path_gpt: /satassdscratch/scml-shared/calvin_data/phase3_models/modelv2/prior/gpt_glob_n2h4_d128_m2_32_k3s1_ff_l1_100.bin
     processed_data_path: /satassdscratch/scml-shared/calvin_data/prepared/lowdim_abcd_nopad_lang_val_data.npz
 
 prior:
@@ -42,7 +42,7 @@ prior:
      n_head: 4
      n_layer: 2
      n_embd: 128
-     obs_dim: 31
+     obs_dim: 256
 
 model:
      image_encoder_dim: 256
@@ -57,7 +57,7 @@ model:
      encoder_layers: 2
      resid_pdrop: 0.1
      attn_pdrop: 0.1
-     use_causal_attn_encoder: false
+     use_causal_encoder: false
      position_embedding_type: 'rotary'
      vq_type: 'fsq'
      codebook_dim: 64
@@ -65,15 +65,14 @@ model:
      vq_decay: 0.99
      commitment_loss_weight: 0.25
      fsq_level: [8,5,5,5]
-     kernel_sizes: [4,3,2]
+     kernel_sizes: [5,3,3]
      strides: [1,1,1]
      dilations: [1,1]
-     use_residual: False # always set to false
+     use_residual: false # always set to false
      pooling_layers: [] # [0] for avg pooling after 1st conv layer or null for no pooling
-     use_causal_attn_decoder: false
+     use_causal_decoder: false
      decoder_type: 'mingpt'
      decoder_dim: 256
      decoder_layers: 2
      decoder_heads: 4
      gru_hidden_dim: 256
-     
