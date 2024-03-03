@@ -19,17 +19,19 @@ defaults:
   - override hydra/job_logging: colorlog
   - override hydra/hydra_logging: colorlog
 
-exp_name: gpt_glob_n2h4_d128_m2_32_k3s1_ff_l1_100
-prior_type : gpt # gpt or diff or sampler
+# exp_name: diff_glob_n2h4_d128_m2_32_k3s1_ff_l1_100
+exp_name: diff_n2_d128_ddpm100_m2_16_k3s1_ff_l1_100
+prior_type : diff # gpt or diff or sampler
 use_prior: true
-action_horizon: 32 # context window in this case
+action_horizon: 16 # context window in this case
 num_steps: 4 # number of steps to run the policy
 save_video: true
 
 paths:
     stats_file_path: /satassdscratch/scml-shared/calvin_data/task_D_D/training/statistics.yaml
-    model_weights_path: /satassdscratch/scml-shared/calvin_data/phase3_models/modelv2/endec/endec_m2_32_k3s1_ff_l1_100.bin
-    prior_weights_path_gpt: /satassdscratch/scml-shared/calvin_data/phase3_models/modelv2/prior/gpt_glob_n2h4_d128_m2_32_k3s1_ff_l1_100.bin
+    model_weights_path: /satassdscratch/scml-shared/calvin_data/phase3_models/modelv2/endec/endec_m2_16_k3s1_ff_l1_100.bin
+    prior_weights_path_gpt: /satassdscratch/scml-shared/calvin_data/phase3_models/modelv2/prior/gpt_glob_n2h4_d128_m2_16_k3s1_ff_l1_100.bin
+    prior_weights_path_diff: /satassdscratch/scml-shared/calvin_data/phase3_models/modelv2/diff_prior/diff_n2_d128_ddpm100_m2_16_k3s1_ff_l1_700.bin
     processed_data_path: /satassdscratch/scml-shared/calvin_data/prepared/lowdim_abcd_nopad_lang_val_data.npz
 
 prior:
@@ -44,6 +46,15 @@ prior:
      n_embd: 128
      obs_dim: 256
 
+diff_prior:
+     diffusion_steps: 100
+     diffusion_type: 'ddpm'
+     codebook_size: 1000
+     input_dim: 10
+     cond_dim: 768 # 512 (lang_clip) + 512 + 512 + 7 (front+gripper+robot_state) | 512+256 for lowdim_obs
+     time_dim: 128
+     down_dims: [128,256]
+
 model:
      image_encoder_dim: 256
      gripper_state_dim: 7
@@ -51,7 +62,7 @@ model:
      obs_entries: [0,2]
      act_dim: 7
      encoder_dim: 256
-     skill_block_size: 32
+     skill_block_size: 16
      encoder_type: 'transformer'
      encoder_heads: 4
      encoder_layers: 2

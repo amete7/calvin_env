@@ -13,6 +13,7 @@ def beam_search(start_token, model, attach_emb, max_len, device, beam_size, temp
         for seq, seq_score in beam:
             with torch.no_grad():
                 x = seq.unsqueeze(0).to(device)
+                # print(x,'input to model')
                 outs = model(x, None, attach_emb, [0, 0])
                 logits = outs[0, -1, :] / temperature
                 log_probs = torch.log_softmax(logits, dim=-1)
@@ -108,10 +109,3 @@ def top_p_sampling(logits, p, temperature=1.0):
     sampled_index = np.random.choice(selected_indices, p=selected_probs)
     
     return sampled_index
-
-# Example usage
-# logits = np.random.rand(1000)  # Example logits of shape 1000
-# p = 0.1  # Example value for p
-# temperature = 1.5  # Example temperature parameter
-# sampled_index = top_p_sampling(logits, p, temperature)
-# print(sampled_index)

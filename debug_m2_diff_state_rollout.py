@@ -15,6 +15,9 @@ sys.path.append('/home/amete7/diffusion_dynamics/diff_skill/code')
 from model_v2 import SkillAutoEncoder
 from gpt_prior_global import GPT, GPTConfig
 from dataset.dataset_calvin import CustomDataset_Cont, CustomDataset_ABCD_lang_no_pad, CustomDataset_ABCD_lang
+from unet import ConditionalUnet1D
+from diffusion_prior import get_sample
+from diffusers import DDPMScheduler, DDIMScheduler
 
 model_name = "openai/clip-vit-base-patch32"
 processor = CLIPProcessor.from_pretrained(model_name)
@@ -49,6 +52,11 @@ def get_indices(model, attach_emb, max_len, device):
     print(indices)
     return indices[1:]
 
+def get_indices_from_diff(net, noise_scheduler, attach_emb, num_inference_steps, max_len, device):
+    global_cond = torch.cat((attach_emb[0], attach_emb[1]), dim=-1)
+    indices = get_sample(net, noise_scheduler, global_cond, num_inference_steps=num_inference_steps, shape=(max_len, 10), device=device)
+    return indices[0].tolist()
+
 seed = 42
 np.random.seed(seed)
 torch.manual_seed(seed)
@@ -57,11 +65,12 @@ def main(cfg):
     max_steps = 1000
     save_video = True
     # 49, 54, 57, 60, 66
-    # traj_idxs = [5,6,9,14,15,18,40,48,66,67,70,94,96,97]
-    traj_idxs = [40]
+    traj_idxs = [5,6,9,14,15,18,40,48,66,67,70,94,96,97]
+    # traj_idxs = [5]
 
     model_ckpt = cfg.paths.model_weights_path
     prior_ckpt_gpt = cfg.paths.prior_weights_path_gpt
+    prior_ckpt_diff = cfg.paths.prior_weights_path_diff
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     data_type = 'val' if 'val' in cfg.paths.processed_data_path else 'train'
     ndpt = 64+(cfg.action_horizon//2)-cfg.action_horizon+1
@@ -87,6 +96,27 @@ def main(cfg):
         gpt_prior_model = gpt_prior_model.to(device)
         gpt_prior_model.eval()
         print('gpt_prior_model_loaded')
+    elif cfg.prior_type == 'diff':
+        net = ConditionalUnet1D(
+            input_dim=cfg.diff_prior.input_dim,
+            local_cond_dim=None,
+            global_cond_dim=cfg.diff_prior.cond_dim,
+            diffusion_step_embed_dim=cfg.diff_prior.time_dim,
+            down_dims=cfg.diff_prior.down_dims,
+            kernel_size=3,
+            n_groups=8,
+            cond_predict_scale=True
+        )
+        net = net.to(device)
+        state_dict = torch.load(prior_ckpt_diff, map_location='cuda')
+        net.load_state_dict(state_dict)
+        net.eval()
+        print('diff_prior_model_loaded')
+        noise_scheduler = DDPMScheduler(
+            num_train_timesteps=cfg.diff_prior.diffusion_steps,
+            # diffusion policy found squared cosine works the best
+            beta_schedule='squaredcos_cap_v2',
+        )
     else:
         raise NotImplementedError(f'prior type {cfg.prior_type} not implemented')
     
@@ -94,7 +124,7 @@ def main(cfg):
         traj_idx = traj_idx_data-1
         if save_video:
             if cfg.use_prior:
-                output_video_path = f'{cfg.action_horizon}_{data_type}_{cfg.prior_type}_roll_{traj_idx}_beam_30_mpch8_l1.mp4'
+                output_video_path = f'{cfg.action_horizon}_{data_type}_{cfg.prior_type}_roll_{traj_idx}_beam_30_l1.mp4'
             else:
                 output_video_path = f'{cfg.action_horizon}_{data_type}_endec_roll_{traj_idx}_top_k_t.mp4'
             frame_size = (400,400)
@@ -118,18 +148,21 @@ def main(cfg):
         robot_state = torch.tensor(robot_state).unsqueeze(0).to(device)
         scene_state = torch.tensor(observation['scene_obs']).unsqueeze(0).to(device)
         obs = torch.cat((scene_state,robot_state),dim=-1).float().to(device)
-        for i in range(cfg.num_steps*2):
+        for i in range(cfg.num_steps):
             with torch.no_grad():
                 prior_obs = model.obs_mlp(obs)
-                # indices = get_indices(gpt_prior_model, (lang_emb, prior_obs), cfg.action_horizon, device)
-                indices = get_beam_search_indices(gpt_prior_model, (lang_emb, prior_obs), cfg.action_horizon, device)
+                if cfg.prior_type == 'gpt':
+                    # indices = get_indices(gpt_prior_model, (lang_emb, prior_obs), cfg.action_horizon, device)
+                    indices = get_beam_search_indices(gpt_prior_model, (lang_emb, prior_obs), cfg.action_horizon, device)
+                elif cfg.prior_type == 'diff':
+                    indices = get_indices_from_diff(net, noise_scheduler, (lang_emb, prior_obs), cfg.diff_prior.diffusion_steps, cfg.action_horizon, device)
             print(indices,'indices from prior')
             z = model.vq.indices_to_codes(torch.tensor(indices).unsqueeze(0).to(device))
             # print(z.shape,'z shape')
             with torch.no_grad():
                 action = model.decode(z, obs).squeeze(0).cpu().numpy()
             # print(action,'action')
-            for timestep in tqdm(range(cfg.action_horizon//2)):
+            for timestep in tqdm(range(cfg.action_horizon)):
                 action_to_take = action[timestep].copy()
                 # print(action_to_take,'action_to_take')
                 # return
